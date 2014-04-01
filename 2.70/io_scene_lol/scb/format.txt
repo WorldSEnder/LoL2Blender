@@ -1,0 +1,49 @@
+// League of Legends SCB file format
+// It's the model format used for static (not animated) meshes
+// It's converted from SCO files (SCene Objects) into SCB files (SCene Binary objects)
+// It's pretty simple to figure out when you read through a SCO file and its corresponding SCB file at the same time!
+// 
+// This format description was written by DragonGeo2
+// Please e-mail any corrections/suggestions/etc. to dragongeo2@gmail.com
+// Oh, and lemme know if you use this format specification for anything, I'd be interested!
+
+struct face
+{
+	unsigned3 indices; // the indices of the verts that this triangle uses
+	char materialname[64];
+
+	// These are prolly texcoords or RGB blends or vertex weights or something
+	// The numbers (first, second, third, etc.) correspond to the order the floats
+	// show up in the SCO file
+	float firstfloat;// = .375
+	float thirdfloat;// = .625
+	float fifthfloat;// = .375
+	float secondfloat;// = 0
+	float fourthfloat;// = .25
+	float sixthfloat;// = .25
+};
+
+// The SCB file starts here:
+struct SCB
+{
+	char magic[8]; // always "r3d2Mesh"
+
+	unsigned short majorVer; // always 2
+	unsigned short minorVer; // always 2
+
+	char object_name[128];
+
+	unsigned nVerts;
+	unsigned nFaces;
+	unsigend unk; // nSections? Always equals 1
+
+	float3 center;
+	float3 extents;
+	float3 verts[nVerts];
+
+	face faceslist[nFaces];
+
+	// Padding
+	unsigned zeros_padding[6];
+	char zero_padding; // what the heck!?
+};

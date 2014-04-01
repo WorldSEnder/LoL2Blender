@@ -44,12 +44,14 @@ class SklReader(object):
         reset - whether to reset the filestream to the original position
         """
         is_skl = False
-        if fistream.read(8) == b'r3d2sklt':
+        first8 = fistream.read(8)
+        if first8 == b'r3d2sklt':
             bit8 = fistream.read(1)
             if bit8 in (1, 2):
                 is_skl = True
             if reset:
                 seek(fistream, -1, 1)
+        elif int(first8[4:]) = 
         if reset:
             seek(fistream, -8, 1)
         return is_skl

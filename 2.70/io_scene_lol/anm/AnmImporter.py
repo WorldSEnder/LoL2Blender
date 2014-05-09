@@ -3,45 +3,24 @@ Created on 30.03.2014
 
 @author: Carbon
 """
-from ..util import split
-from .AnmData import AnmBone, AnmData, AnmTrans, MODE_FILE
-from io_scene_lol.util import seek
-from os import path
-import os
-import struct
+from ..util import AbstractReader, MODE_FILE, length_check, read_from_file, seek, \
+    split, tell_f_length, unpack
+from .AnmData import AnmBone, AnmData, AnmTransformation
+from io_scene_lol.anm.AnmData import AnmHeader
 
-def read_from_file(filepath, context, **options):
+def import_from_file(filepath, context, **options):
     """
     Imports an animation from the file into blender
     """
-    if path.isfile(filepath):
-        file = open(filepath, mode='rb')
-        reader = AnmReader()
-        if not AnmReader.is_anm_file(file):
-            file.close()
-            return {'CANCELLED'}
-        reader.read_from_file(file)
-        try:
-            if options["dumpData"]:
-                # this is debug
-                # pylint: disable=protected-access
-                steam = None
-                try:
-                    steam = options["ostream"]
-                except KeyError:
-                    pass
-                reader._data.dump_data(stream=steam)
-        except KeyError:
-            pass # do nothing
-        return reader.to_scene(context)
+    return read_from_file(AnmReader, filepath, context, **options)
 
-class AnmReader(object):
+class AnmReader(AbstractReader):
     """
     Convenience class that handles the import
     """
 
     @classmethod
-    def is_anm_file(cls, fistream, reset=True):
+    def is_my_file(cls, fistream, reset=True):
         """
         Reads from the fistream and tells if the stream (supposedly) describes an animation file
         fistream - the stream to read from
@@ -50,6 +29,14 @@ class AnmReader(object):
         is_anm = False
         if fistream.read(8) == b'r3d2anmd':
             is_anm = True
+            # if version 4
+            if unpack("<I", fistream) == 4:
+                if unpack("<4xI", fistream) == 0xBE0794D3:
+                    is_anm = True
+                if reset:
+                    seek(fistream, -8, 1)
+            if reset:
+                seek(fistream, -4, 1)
         if reset:
             seek(fistream, -8, 1)
         return is_anm
@@ -58,95 +45,102 @@ class AnmReader(object):
         """
         Constructor
         """
-        self._data = AnmData(MODE_FILE)
+        self._data = None
+
+    def __str__(self):
+        """A nice representation of this object"""
+        return "AnmImporter:\n%s" % str(self._data)
 
     def read_from_file(self, fistream):
         """
         Reads an animation from a file into this handler. Doesn't manipulate any scene/object
         """
+        warns = []
         # get length of file we read
-        f_length = os.stat(fistream.name).st_size
-        if f_length < 28: # length of file header
-            raise TypeError("File is too short for an animation file")
-        if not AnmReader.is_anm_file(fistream, False):
-            raise TypeError("Magic number of file incorrect. No animation file")
-        version = struct.unpack("<I", fistream.read(4))[0]
+        f_length = tell_f_length(fistream, prefix="AnmReader")
+        length_check(12, f_length, "AnmReader")
+        fistream.read(8) # == b'r3d2anmd'
+        version = unpack("<I", fistream)
         if version == 3:
-            self._read_version3(fistream, f_length)
+            length_check(28, f_length, "AnmReader")
+            warns = self._read_version3(fistream, f_length)
         elif version == 4:
-            self._read_version4(fistream, f_length)
+            length_check(64, f_length, "AnmReader")
+            warns = self._read_version4(fistream, f_length)
         else:
-            raise NotImplementedError("Only file-versions 3 and 4 are currently implemented. Report this error to WorldSEnder.")
+            raise NotImplementedError("AnmReader: Only file-versions 3 and 4 are currently implemented. Report this error to WorldSEnder.")
+        return warns
 
     def _read_version3(self, fistream, f_length):
         """
         Reads a version 3 file
         """
-        self._data.version = 3
-        # _ = designer Id
-        _, num_bones, num_frames, fps = struct.unpack("<3If", fistream.read(16))
+        data = AnmData(MODE_FILE)
+        data.version = 3
+        (# designerId,
+        num_bones, num_frames, fps) = unpack("<4x2If", fistream)
         if fps < 0.0: # the odds of the file....
             fps += 4294967296.0
-        # add to minlength
-        min_length = 28 + num_bones * AnmBone.kHeaderSize + num_bones * num_frames * AnmTrans.kSizeInFile
-        if f_length < min_length:
-            raise TypeError("File is too short (%s bytes). Expected " \
-                            "with %s bones and %s frames: %s bytes" % (f_length, num_bones, num_frames, min_length))
+        min_length = 28 + num_bones * AnmBone.kHeaderSize + num_bones * num_frames * AnmTransformation.kSizeInFile
+        length_check(min_length, f_length, "AnmReader")
+#         raise TypeError("File is too short (%s bytes). Expected " \
+#                         "with %s bones and %s frames: %s bytes" % (f_length, num_bones, num_frames, min_length))
         for _ in range(num_bones):
             bone = AnmBone()
-            name_bytes, mode = split(struct.unpack("<32BI", fistream.read(AnmBone.kHeaderSize), 32))
-            bone.name = bytes(name_bytes).rstrip('\x00').decode("ISO-8859-1")
+            name_bytes, mode = split(unpack("<32BI", fistream), 32)
+            bone.name = str(bytes(name_bytes), encoding="ISO-8859-1").rstrip('\x00')
             bone.is_root = mode == 2
             for _ in range(num_frames):
-                rot, loc = split(struct.unpack("<7f", fistream.read(28)), 4)
-                bone.poses.append(AnmTrans(rot, loc))
+                rot, loc = split(unpack("<7f", fistream), 4)
+                bone.poses.append(AnmTransformation(rot, loc))
             # all frames
-            self._data.bones.append(bone)
+            data.bones.append(bone)
         # all bones
+        self._data = data
+        return []
 
     def _read_version4(self, fistream, f_length):
         """
         Reads a file of version 4
         """
-        self._data.version = 4
-        min_length = 12 + struct.unpack('<I', fistream.read(4))[0]
-        if f_length < min_length:
-            raise TypeError("File is too short (Read filelength: %s)" % min_length + 12)
-        magic_nbr = struct.unpack(">I", fistream.read(4))[0]
-        if magic_nbr != 0xD39407BE:
-            raise TypeError("Invalid magic number")
-        seek(fistream, 8, 1) # 8 unused bytes, possibly was thought to be used as num_pos, num_quat or something
-        num_bones, num_frames, fps = struct.unpack('<2If', fistream.read(12))
-        if fps < 1:
-            fps = 1 / fps
-        self._data.num_frames = num_frames
-        self._data.fps = fps
-        seek(fistream, 12, 1) # 12 unused bytes
-        pos_off, quat_off, frame_off = struct.unpack('<3I', fistream.read(12))
-        num_pos = (quat_off - pos_off) // 12
-        num_quat = (frame_off - quat_off) // 16
-        seek(fistream, pos_off + 12) # place cursor to positions
-        positions = split(struct.unpack('<%sf' % (num_pos * 3), fistream.read(12 * num_pos)), *[3 * i for i in range(1, num_pos)])
-        quats = split(struct.unpack('<%sf' % (num_quat * 4), fistream.read(16 * num_quat)), *[4 * i for i in range(1, num_quat)])
+        data = AnmData(MODE_FILE)
+        warns = []
+        data.version = 4
+        pos = fistream.tell()
+        header = AnmHeader().unpack(fistream)
+        length_check(12 + header.data_length, f_length, "AnmReader:")
+        # no need for that is already checked
+        # if magic_nbr != 0xD39407BE:
+        #     raise TypeError("AnmReader: Invalid magic number")
+        data.num_frames = header.num_frames
+        data.fps = (1 / header.fps) if header.fps < 1 else (header.fps)
+        num_pos = (header.quat_off - header.pos_off) // 12
+        num_quat = (header.frame_off - header.quat_off) // 16
+        seek(fistream, pos + header.pos_off, 0) # place cursor to positions
+        positions = split(unpack('<%sf' % (num_pos * 3), fistream), *[3 * i for i in range(1, num_pos)])
+        quats = split(unpack('<%sf' % (num_quat * 4), fistream), *[4 * i for i in range(1, num_quat)])
         # init bones
-        self._data.bones = [AnmBone() for _ in  range(num_bones)]
-        if num_frames: # if there are any frames then we take the first one to set name hashes
-            for bone in self._data.bones:
-                name_hash, pos_id, quat_id = struct.unpack("<Ihxxhxx", fistream.read(12))
-                bone.name_hash = name_hash
-                bone.poses.append(AnmTrans(positions[pos_id], quats[quat_id]))
-        for _ in range(num_frames - 1):
-            for bone in self._data.bones:
-                name_hash, pos_id, quat_id = struct.unpack("<Ihxxhxx", fistream.read(12))
-                if bone.name_hash != name_hash:
-                    raise TypeError('The file does not contain valid information. The same bone occurs with different name hashes.')
-                bone.poses.append(AnmTrans(positions[pos_id], quats[quat_id]))
+        data.bones = [AnmBone() for _ in  range(header.num_bones)]
+        for _ in range(header.num_frames):
+            for i, bone in enumerate(data.bones):
+                name_hash, pos_id, quat_id = unpack("<Ihxxhxx", fistream)
+                if not bone.name_hash:
+                    bone.name_hash = name_hash
+                elif bone.name_hash != name_hash:
+                    warns.append("AnmReader: The file does not contain valid information."
+                                " The same bone (nbr. %d) occurs with different name hashes (%s and %s)"
+                                % (i, bone.name_hash, name_hash))
+                bone.poses.append(AnmTransformation(positions[pos_id], quats[quat_id]))
             # all bones
         # all frames
+        self._data = data
+        return warns
 
     def to_scene(self, d__context):
         """
         Sets up the scene with the previously read data
         """
         self._data.switch_to_blend_mode()
+        # TODO: anm.to_scene
+        print(d__context)
         raise NotImplementedError()

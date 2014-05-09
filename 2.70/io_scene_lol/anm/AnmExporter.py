@@ -3,14 +3,12 @@ Created on 29.03.2014
 
 @author: Carbon
 """
-from ..util import get_arm_from_context
-from .AnmData import AnmBone, AnmData, AnmTrans, MODE_INTERNAL
+from ..util import DESIGNER_ID, get_arm_from_context
+from .AnmData import AnmBone, AnmData, AnmTransformation, MODE_INTERNAL
 from os import path
 import struct
 
-
-
-def write_to_file(filepath, context, **options):
+def export_to_file(filepath, context, **options):
     """
     Exports the active object in the context given to the file given
     """
@@ -22,7 +20,12 @@ def write_to_file(filepath, context, **options):
             if options["dumpData"]:
                 # this is debug
                 # pylint: disable=protected-access
-                writer._data.dump_data()
+                stream = None
+                try:
+                    stream = options["ostream"]
+                except KeyError:
+                    pass
+                print(writer._data, file=stream)
         except KeyError:
             pass # do nothing
         writer.write_to_file(file)
@@ -45,7 +48,6 @@ class AnmWriter(object):
         Initializes the writer (reads from the context given)
         Will work on the currently selected object
         """
-
         # setup
         armature = get_arm_from_context(context)
         data = self._data
@@ -60,7 +62,7 @@ class AnmWriter(object):
         for frame in range(start, end+1):
             scene.frame_current = frame
             for bone, bone_internal in zip(data.bones, armature.pose.bones):
-                bone.poses.append(AnmTrans(bone_internal.rotation_quaternion, bone_internal.location))
+                bone.poses.append(AnmTransformation(bone_internal.rotation_quaternion, bone_internal.location))
             # all bones done
         # all frames done
 
@@ -71,16 +73,16 @@ class AnmWriter(object):
         data = self._data
         data.switch_to_file_mode()
         fostream.write("r3d2anmd".encode())
-        header_data = struct.pack("<4If", data.version, 0x43211234, len(data.bones), data.num_frames, data.fps)
+        header_data = struct.pack("<4If", data.version, DESIGNER_ID, len(data.bones), data.num_frames, data.fps)
         fostream.write(header_data)
         for bone in data.bones:
-            buffer = bytearray(AnmBone.kHeaderSize + len(bone.poses) * AnmTrans.kSizeInFile)
+            buffer = bytearray(AnmBone.kHeaderSize + len(bone.poses) * AnmTransformation.kSizeInFile)
             # this can't handle utf-8 I KNOW
             name_encoded = bone.name.encode()[:AnmBone.kNameLen]
             buffer[:len(name_encoded)] = name_encoded
             struct.pack_into("<I", buffer, AnmBone.kNameLen, 2 if bone.is_root else 0)
             for i, pose in enumerate(bone.poses):
                 # rot and loc are vectors so we unpack them and pack them into the bytebuffer
-                struct.pack_into("<7f", buffer, i * AnmTrans.kSizeInFile, *(pose.rot + pose.loc))
+                struct.pack_into("<7f", buffer, i * AnmTransformation.kSizeInFile, *(pose.rot + pose.loc))
             fostream.write(buffer)
         # all bones finished

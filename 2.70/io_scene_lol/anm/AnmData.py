@@ -3,9 +3,33 @@ Created on 29.03.2014
 
 @author: Carbon
 """
-from ..util import MODE_FILE, MODE_INTERNAL
+from ..util import MODE_FILE, MODE_INTERNAL, unpack
 
-class AnmTrans(object): # pylint: disable=too-few-public-methods
+class AnmHeader(object): # pylint: disable=too-few-public-methods
+    """
+    A header for animations of version 4
+    """
+    def __init__(self):
+        """Constructor"""
+        self.data_length = 0
+        self.num_bones = 0
+        self.num_frames = 0
+        self.fps = 0
+        self.pos_off = 0
+        self.quat_off = 0
+        self.frame_off = 0
+
+    def unpack(self, fistream):
+        """
+        Unpacks the header from the given datastream
+        """
+        (self.data_length,
+        # magic_number
+        # 8 unused bytes
+        self.num_bones, self.num_frames, self.fps,
+        self.pos_off, self.quat_off, self.frame_off) = unpack('<I12x2If12x3I', fistream)
+
+class AnmTransformation(object): # pylint: disable=too-few-public-methods
     """
     represents a transformation
     """
@@ -22,7 +46,6 @@ class AnmTrans(object): # pylint: disable=too-few-public-methods
         self.rot[:sorted((0, len(rot), 4))[1]] = rot[:4]
         self.loc = [0.0] * 3
         self.loc[:sorted((0, len(loc), 3))[1]] = loc[:3]
-
 
 class AnmBone(object): # pylint: disable=too-few-public-methods
     """
@@ -75,16 +98,17 @@ class AnmData(object):
             return
         # TODO: whatever is necessary to adjust Blender <-> LoL conversion
 
-    def dump_data(self, stream=None):
+    def __str__(self):
         """
-        Prints the data to the console
+        Returns the data in a nice format
         """
-        print('Version: %s, fps: %s, bonecount: %s, frames: %s' % (self.version, self.fps, len(self.bones), self.num_frames), file=stream)
-        bone_caption = 'Bone Nbr: %s, {0}: %s, isRoot: %s'.format('name' if self.version == 3 else 'namehash')
+        rstr = "Version: %s, fps: %s, Nbr. of bones: %s, Framecount: %s" % (self.version, self.fps,
+                                                                                 len(self.bones), self.num_frames)
         for i, bone in enumerate(self.bones):
-            print(bone_caption % (i, bone.name if self.version == 3 else bone.name_hash, bone.is_root), file=stream)
+            rstr += ("\nAnmBone Nbr: %s, %s: %s, isRoot: %s" % ((i, "name", bone.name, bone.is_root)
+                            if self.version == 3 else (i, "namehash", bone.name_hash, bone.is_root)))
             for j, pose in enumerate(bone.poses):
-                print('    Frame %s: Pos %s Rot %s' % (j, pose.loc, pose.rot), file=stream)
+                rstr += '\n    Frame %s: Pos %s Rot %s' % (j, pose.loc, pose.rot)
             # all frames
-        stream.flush()
         # all bones
+        return rstr

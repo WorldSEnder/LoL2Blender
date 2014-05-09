@@ -10,7 +10,7 @@ MODE_INTERNAL = 1
 DESIGNER_ID = 0x43211234
 
 from io import UnsupportedOperation
-# from mathutils import Quaternion, Vector
+from mathutils import Quaternion, Vector
 from os import path
 import functools
 import struct

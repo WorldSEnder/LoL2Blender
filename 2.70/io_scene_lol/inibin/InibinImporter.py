@@ -7,8 +7,8 @@ This work is based on https://github.com/Met48/inibin
 @author: Carbon
 """
 from ..util import AbstractReader, read_from_file, seek, tell_f_length, unpack
-from .InibinData import DEFAULT_FORMAT_FUNC, DEFAULT_SEL_FILTER_FUNC, \
-    DEFAULT_SORT_FUNC, InibinData
+from .InibinData import InibinData, default_format_func, default_sel_filter_func, \
+    default_sort_func
 from .KEYTABLES import KEY_TABLE, TYPEFLAG_TABLE, TYPE_OF_FLAG
 
 # the default filter filters outdated keys
@@ -78,9 +78,9 @@ class InibinReader(AbstractReader):
         """A nice representation of this object"""
         return "InibinImporter:\n%s" % self._data
 
-    def print_data(self, sel_filter_func=DEFAULT_SEL_FILTER_FUNC,
-                         format_func=DEFAULT_FORMAT_FUNC,
-                         sort_func=DEFAULT_SORT_FUNC,
+    def print_data(self, sel_filter_func=default_sel_filter_func,
+                         format_func=default_format_func,
+                         sort_func=default_sort_func,
                          stream=None):
         """
         Outputs the data carried with the InibinReader in a human-readable format

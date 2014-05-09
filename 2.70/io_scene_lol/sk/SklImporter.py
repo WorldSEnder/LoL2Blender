@@ -29,7 +29,7 @@ class SklReader(AbstractReader):
         first8 = fistream.read(8)
         if first8 == b'r3d2sklt':
             bit8 = fistream.read(1)
-            if bit8 in (1, 2):
+            if bit8 in b'\x01\x02':
                 is_skl = True
             if reset:
                 seek(fistream, -1, 1)
@@ -97,6 +97,7 @@ class SklReader(AbstractReader):
         data.version = 3
         pos = fistream.tell()
         header = RawHeader().unpack(fistream)
+        seek(fistream, pos + header.header_size, 0)
         # already checked
         # if header.magic != 0xC34FFD22:
         #     raise TypeError("SklReader: Stream doesn't describe a skl-file, magic is wrong")
@@ -107,7 +108,7 @@ class SklReader(AbstractReader):
             data.bones[bone_id] = bone
         seek(fistream, pos + header.offset_bone_names, 0)
         # because this is the last in file we can read as far as we want
-        ensured_string = fistream.read(SklBone.kNameLength * header.nbr_skl_bones).decode()
+        ensured_string = fistream.read(SklBone.kNameLength * header.nbr_skl_bones).decode("latin-1")
         # the regex matches multiple, 4-byte charsequences without \0-byte followed by a sequence with one or more \0-bytes
         bin_names = re.findall('(([^\x00]{4})*(\x00...|.\x00..|..\x00.|...\x00))', ensured_string)
         # the first matched group (everything) is taken and the leftmost splutter of split(\0) is taken as the bone's name

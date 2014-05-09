@@ -114,7 +114,10 @@ def unpack(fmt, buffer):
     Also automatically unpacks one-value-tupples
     """
     size = struct.calcsize(fmt)
-    items = struct.unpack(fmt, buffer.read(size))
+    buff = buffer.read(size)
+    if len(buff) != size:
+        raise IOError("Buffer not long enough")
+    items = struct.unpack(fmt, buff)
     return items[0] if len(items) == 1 else items
 
 def read_from_file(reader_type, filepath, context, **options):

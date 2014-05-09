@@ -27,6 +27,7 @@ pip-log.txt
 .coverage
 .tox
 nosetests.xml
+moduletest.py
 
 # Translations
 *.mo
@@ -35,5 +36,10 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
 #PyLint configuration
 .pylintrc
+
+# an emulated mathutils-module. Originally this is C so it's 
+# too complicated to build the whole lib for this little bit
+mathutils.py

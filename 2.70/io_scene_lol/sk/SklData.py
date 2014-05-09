@@ -26,6 +26,11 @@ class SklBone(object): # pylint: disable=too-few-public-methods
         self.transform = [[0.0] * 4 for _ in range(4)]
         self.transform[3][3] = 1.0
 
+    def __str__(self):
+        """A good-looking representation of the bone"""
+        rstr = "namehash: %s, Name: %s" % (self.namehash, self.name)
+        return rstr + ", Parent: %s, Scale: %s, Transformation: %s" % (self.parent, self.scale, self.transform)
+
     def unpack(self, fistream, raw=False):
         """
         Reads this bone from the inputstream
@@ -50,9 +55,9 @@ class SklBone(object): # pylint: disable=too-few-public-methods
             self.parent = -1 if parent_id == 0xFFFF else parent_id
             self.transform = quats_to_matrix(q_x, q_y, q_z, q_w, t_x, t_y, t_z)
         else:
-            self.name = fistream.read(SklBone.kNameLength).decode()
+            self.name = fistream.read(SklBone.kNameLength).decode('latin-1').split('\x00')[0]
             self.namehash = hash_name(self.name)
-            self.parent, self.scale = unpack(">If", fistream)
+            self.parent, self.scale = unpack("<if", fistream)
             major_col = split(unpack("12f", fistream), 4, 8)
             self.transform = [list(a) + [0.0] for a in zip(*major_col)]
             self.transform[3][3] = 1.0
@@ -74,12 +79,13 @@ class SklData(object): # pylint: disable=too-few-public-methods
         # all bones, type SklBone
         self.bones = []
         self.skn_indices = []
-        self.bones_internal = []
 
     def __str__(self):
         """Beautiful, just beautiful"""
-        # TODO: SklData.__str__()
-        return ""
+        rstr = "SklData: version %s, %s bones, %s animated bones" % (self.version, len(self.bones), len(self.skn_indices))
+        for i, bone in enumerate(self.bones):
+            rstr += "\nBone #%s%s: %s" % (i, "(animated)" if i in self.skn_indices else "", bone)
+        return rstr
 
     def switch_to_blend_mode(self):
         """
@@ -125,7 +131,7 @@ class RawHeader(object): # pylint: disable=too-many-instance-attributes
         """
         (self.size, self.magic, self.nbr_skl_bones, self.nbr_anm_bones, self.header_size,
          self.offset_namehashes, self.offset_skn_indices, self.offset_ukn, self.offset_ukn2,
-         self.offset_bone_names) = unpack("<2I6x2H2x6I", fistream)
+         self.offset_bone_names) = unpack("<2I6x2H2x6I", fistream) # 8I + 8x + 2H = 44bytes
         return self
 
     def dump_data(self, line_prefix="", ostream=stdout):

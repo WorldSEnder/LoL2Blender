@@ -8,7 +8,7 @@ from .SklData import SklData
 from .SknData import SknData
 from os import path
 
-def read_from_file(filepath_skn, filepath_skl, context, **options):
+def export_to_file(filepath_skn, filepath_skl, context, **options):
     """
     Writes the model to the specified location
     """
@@ -26,8 +26,7 @@ def read_from_file(filepath_skn, filepath_skl, context, **options):
                     stream = options["ostream"]
                 except KeyError:
                     pass
-                writer._data_skn.dump_data(stream=stream)
-                writer._data_skl.dump_data(stream=stream)
+                print(writer, file=stream)
         except KeyError:
             pass # do nothing
         writer.write_to_files(file_skn, file_skl)
@@ -39,7 +38,8 @@ def read_from_file(filepath_skn, filepath_skl, context, **options):
     else:
         return {'CANCELLED'}
 
-class SkWriter(object):
+# THIS CLASS IS USED!!! OMG PYLINT PLS
+class SkWriter(object): # pylint: disable=abstract-class-not-used
     """
     Reads data from a scene and writes it to a file
     """
@@ -68,10 +68,12 @@ class SkWriter(object):
         # all mods searched
         if armature is None:
             raise TypeError("Selected object does not have an armature bound to it.")
-
+        # TODO SkExport.from_context
+        raise NotImplementedError()
 
     def write_to_files(self, fostream_skn, fostream_skl):
         """
         Writes the data to the given outputstream
         """
-        pass
+        raise NotImplementedError()
+        # TODO: SkExporter.write_to_files

@@ -87,16 +87,17 @@ class InibinReader(AbstractReader):
         """
         print(self._data.str_data(sel_filter_func, format_func, sort_func), file=stream)
 
-    def read_from_file(self, fistream):
+    def read_from_file(self, file_path):
         """
         Actually reads the from the fistream
-        fistream: the file to read from
+        file_path: the file to read from
         [filter_func]: a function with three input parameters(enum mode, int key, type key_type)
             - a mode -> get the right KEYTABLE with KEYTABLES#mode_to_keytable(mode)
             - a key value -> KEYTABLES#KEY_TABLE
             - a key_type like INT, SHORT, often not used at all
         """
         data = InibinData()
+        fistream = open(file_path, mode='rb')
         errs = []
         data.header.unpack(fistream)
         for flag in InibinReader._flags_in_order():

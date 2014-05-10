@@ -49,19 +49,21 @@ class SklReader(AbstractReader):
         """A nice representation of this object"""
         return "SklImporter:\n%s" % self._data
 
-    def read_from_file(self, fistream):
+    def read_from_file(self, file_path):
         """
         Reads skl-data from the file.
-        fistream - the stream to read from
+        file_path - the path to read from
         """
+        fistream = open(file_path, 'rb')
         f_length = util.tell_f_length(fistream, prefix="SklReader")
         length_check(20, f_length, "SklReader")
         byts = fistream.read(8)
-        if byts == "r3d2sklt".encode():
+        if byts == b'r3d2sklt':
             self._read_version12(fistream, f_length)
         else:
             seek(fistream, -8, 1)
             self._read_version3(fistream, f_length)
+        fistream.close()
         return [] # no warnings
 
     def _read_version12(self, fistream, f_length):

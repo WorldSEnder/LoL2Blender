@@ -3,16 +3,16 @@ Created on 30.03.2014
 
 @author: Carbon
 """
-from ..util import AbstractReader, MODE_FILE, length_check, read_from_file, seek, \
-    split, tell_f_length, unpack
-from .AnmData import AnmBone, AnmData, AnmTransformation
-from io_scene_lol.anm.AnmData import AnmHeader
+from .. import util
+from ..util import AbstractReader, MODE_FILE, MODE_INTERNAL, length_check, seek, \
+    unpack
+from .AnmData import AnmBone, AnmData, AnmHeader, AnmTransformation
 
 def import_from_file(filepath, context, **options):
     """
     Imports an animation from the file into blender
     """
-    return read_from_file(AnmReader, filepath, context, **options)
+    return util.read_from_file(AnmReader, filepath, context, **options)
 
 class AnmReader(AbstractReader):
     """
@@ -51,13 +51,15 @@ class AnmReader(AbstractReader):
         """A nice representation of this object"""
         return "AnmImporter:\n%s" % str(self._data)
 
-    def read_from_file(self, fistream):
+    def read_from_file(self, file_path):
         """
-        Reads an animation from a file into this handler. Doesn't manipulate any scene/object
+        Reads an animation from a file into this handler.
+        Doesn't manipulate any scene/object
         """
         warns = []
+        fistream = open(file_path, 'rb')
         # get length of file we read
-        f_length = tell_f_length(fistream, prefix="AnmReader")
+        f_length = util.tell_f_length(fistream, prefix="AnmReader")
         length_check(12, f_length, "AnmReader")
         fistream.read(8) # == b'r3d2anmd'
         version = unpack("<I", fistream)
@@ -69,6 +71,7 @@ class AnmReader(AbstractReader):
             warns = self._read_version4(fistream, f_length)
         else:
             raise NotImplementedError("AnmReader: Only file-versions 3 and 4 are currently implemented. Report this error to WorldSEnder.")
+        fistream.close()
         return warns
 
     def _read_version3(self, fistream, f_length):
@@ -87,11 +90,11 @@ class AnmReader(AbstractReader):
 #                         "with %s bones and %s frames: %s bytes" % (f_length, num_bones, num_frames, min_length))
         for _ in range(num_bones):
             bone = AnmBone()
-            name_bytes, mode = split(unpack("<32BI", fistream), 32)
+            name_bytes, mode = util.split(unpack("<32BI", fistream), 32)
             bone.name = str(bytes(name_bytes), encoding="ISO-8859-1").rstrip('\x00')
             bone.is_root = mode == 2
             for _ in range(num_frames):
-                rot, loc = split(unpack("<7f", fistream), 4)
+                rot, loc = util.split(unpack("<7f", fistream), 4)
                 bone.poses.append(AnmTransformation(rot, loc))
             # all frames
             data.bones.append(bone)
@@ -117,8 +120,8 @@ class AnmReader(AbstractReader):
         num_pos = (header.quat_off - header.pos_off) // 12
         num_quat = (header.frame_off - header.quat_off) // 16
         seek(fistream, pos + header.pos_off, 0) # place cursor to positions
-        positions = split(unpack('<%sf' % (num_pos * 3), fistream), *[3 * i for i in range(1, num_pos)])
-        quats = split(unpack('<%sf' % (num_quat * 4), fistream), *[4 * i for i in range(1, num_quat)])
+        positions = util.split(unpack('<%sf' % (num_pos * 3), fistream), *[3 * i for i in range(1, num_pos)])
+        quats = util.split(unpack('<%sf' % (num_quat * 4), fistream), *[4 * i for i in range(1, num_quat)])
         # init bones
         data.bones = [AnmBone() for _ in  range(header.num_bones)]
         for _ in range(header.num_frames):
@@ -140,7 +143,6 @@ class AnmReader(AbstractReader):
         """
         Sets up the scene with the previously read data
         """
-        self._data.switch_to_blend_mode()
+        self._data.switch_mode(MODE_INTERNAL)
         # TODO: anm.to_scene
-        print(d__context)
         raise NotImplementedError()

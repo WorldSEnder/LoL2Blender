@@ -126,13 +126,14 @@ def read_from_file(reader_type, filepath, context, **options):
     """
     result = {'CANCELLED'}
     if path.isfile(filepath):
-        file_stream = open(filepath, mode='rb')
         reader = reader_type()
+        file_stream = open(filepath, mode='rb')
         if not reader_type.is_my_file(file_stream, True):
             file_stream.close()
             return {'CANCELLED'}
+        file_stream.close()
         try:
-            warnings = reader.read_from_file(file_stream)
+            warnings = reader.read_from_file(filepath)
             if warnings is None:
                 warnings = []
             for warn in warnings:
@@ -171,9 +172,9 @@ class AbstractReader(object):
         """
         raise NotImplementedError()
 
-    def read_from_file(self, fistream):
+    def read_from_file(self, file_path):
         """
-        Reads the model from the given fistream
+        Reads the model from the given file_path
         """
         raise NotImplementedError()
 
@@ -185,5 +186,6 @@ class AbstractReader(object):
 
     def __str__(self):
         """
-        Gives the data
+        Gives the data in a nice format. MUST implement this
         """
+        raise NotImplementedError()

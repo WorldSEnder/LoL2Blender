@@ -91,7 +91,7 @@ def read_strings(count, fistream, data): # pylint: disable=unused-argument
     Reads the strings from the fistream. They are special because they need information from the header
     """
     offsets = unpack("<%sH" % (count,), fistream)
-    strings = fistream.read(data.header.string_table_length).decode()
+    strings = fistream.read(data.header.string_table_length).decode("latin-1")
     return [strings[offset:].split('\x00')[0] for offset in offsets]
 
 class CustomDefaultDict(dict):

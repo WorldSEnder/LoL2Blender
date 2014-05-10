@@ -31,7 +31,7 @@ class SknMaterial(object): # pylint: disable=too-few-public-methods
         """
         Reads the material from the input stream
         """
-        self.name = fistream.read(SknMaterial.kNameLen).decode().split('\x00')[0]
+        self.name = fistream.read(SknMaterial.kNameLen).decode("latin-1").split('\x00')[0]
         (self.start_vertex, self.num_vertices,
          self.start_index, self.num_indices) = unpack("<4I", fistream)
         return self
@@ -76,7 +76,6 @@ class SknData(object): # pylint: disable=too-few-public-methods
         Set the mode to file if you'll read from a file and to internal if you init from blender
         """
         self._mode = mode
-        self.champion_name = 'PLACEHOLDER'
         self.version = -1
         # no need for the following in python
         # self.num_vtxs = 0
@@ -88,8 +87,8 @@ class SknData(object): # pylint: disable=too-few-public-methods
 
     def __str__(self):
         """Beautiful representation"""
-        rstr = "SknData for %s:\nVersion %s, %s materials, %s vertices, %s faces" % \
-                (self.champion_name, self.version, len(self.materials), len(self.vertices), len(self.indices) // 3)
+        rstr = "SknData:\nVersion %s, %s materials, %s vertices, %s faces" % \
+                (self.version, len(self.materials), len(self.vertices), len(self.faces))
         for i, mat in enumerate(self.materials):
             rstr += "\n    Material #%s: %s" % (i, mat)
         for i, vert in enumerate(self.vertices):
@@ -100,18 +99,14 @@ class SknData(object): # pylint: disable=too-few-public-methods
             rstr += "\n    Some bytes: %s" % (self.end_tab,)
         return rstr
 
-    def switch_to_blend_mode(self):
+    def switch_mode(self, mode=None):
         """
         Switches to internal mode
+        mode: the mode to switch to.
+            If None given just swaps to the other
         """
-        if self._mode == MODE_INTERNAL:
+        if self._mode == mode:
             return
-        # TODO: whatever is necessary to adjust Blender <-> LoL conversion
-
-    def switch_to_file_mode(self):
-        """
-        Switches to file/external mode
-        """
-        if self._mode == MODE_FILE:
-            return
+        for vert in self.vertices:
+            vert.uv = (vert.uv[0], 1 - vert.uv[1]) # Swap y-co
         # TODO: whatever is necessary to adjust Blender <-> LoL conversion

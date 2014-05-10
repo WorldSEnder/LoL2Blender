@@ -4,7 +4,8 @@ Created on 29.03.2014
 @author: Carbon
 """
 from ..util import DESIGNER_ID, get_arm_from_context
-from .AnmData import AnmBone, AnmData, AnmTransformation, MODE_INTERNAL
+from .AnmData import AnmBone, AnmData, AnmTransformation, MODE_FILE, \
+    MODE_INTERNAL
 from os import path
 import struct
 
@@ -71,14 +72,13 @@ class AnmWriter(object):
         Writes the previously initialized data to the stream given
         """
         data = self._data
-        data.switch_to_file_mode()
+        data.switch_mode(MODE_FILE)
         fostream.write("r3d2anmd".encode())
         header_data = struct.pack("<4If", data.version, DESIGNER_ID, len(data.bones), data.num_frames, data.fps)
         fostream.write(header_data)
         for bone in data.bones:
             buffer = bytearray(AnmBone.kHeaderSize + len(bone.poses) * AnmTransformation.kSizeInFile)
-            # this can't handle utf-8 I KNOW
-            name_encoded = bone.name.encode()[:AnmBone.kNameLen]
+            name_encoded = bone.name.encode("latin-1")[:AnmBone.kNameLen]
             buffer[:len(name_encoded)] = name_encoded
             struct.pack_into("<I", buffer, AnmBone.kNameLen, 2 if bone.is_root else 0)
             for i, pose in enumerate(bone.poses):

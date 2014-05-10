@@ -7,6 +7,7 @@ from .. import util
 from ..util import AbstractReader, MODE_FILE, MODE_INTERNAL, length_check, seek, \
     unpack
 from .SknData import SknData, SknMaterial, SknVtx
+from os import path
 import bmesh
 import bpy
 
@@ -40,16 +41,18 @@ class SknReader(AbstractReader):
         Constructor
         """
         self._data = None
+        self.champion_name = 'PLACEHOLDER'
 
     def __str__(self):
         """A nice representation of this object"""
-        return "SknImporter:\n%s" % self._data
+        return "SknImporter for %s:\n%s" % (self.champion_name, self._data)
 
     def read_from_file(self, file_path):
         """
         Reads the model from the given file_path
         """
         warns = []
+        self.champion_name = path.basename(file_path)
         fistream = open(file_path, 'rb')
         f_length = util.tell_f_length(fistream, "SknReader")
         length_check(8, f_length, "SknReader")
@@ -71,7 +74,6 @@ class SknReader(AbstractReader):
         Reads both version 1 and 2 depending on data.version
         """
         data = SknData(MODE_FILE)
-        data.champion_name = fistream.
         warns = []
         min_length = 20 + 12 if version2 else 0
         length_check(min_length, f_length, "SknReader")
@@ -131,9 +133,9 @@ class SknReader(AbstractReader):
             for vertloop, vert in zip(bface.loops, face_verts):
                 vertloop[buv_layer].uv = vert.uv
         # bmesh finished
-        mesh = bpy.data.meshes.new(self._data.champion_name)
+        mesh = bpy.data.meshes.new(self.champion_name)
         bm.to_mesh(mesh)
-        obj = bpy.data.objects.new(self._data.champion_name, mesh)
+        obj = bpy.data.objects.new(self.champion_name, mesh)
         scene = context.scene
         scene.objects.link(obj)
         scene.update()

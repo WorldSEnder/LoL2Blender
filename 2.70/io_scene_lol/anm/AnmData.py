@@ -77,26 +77,18 @@ class AnmData(object):
         self.bones = []
         self._mode = initMode
 
-    def switch_to_blend_mode(self):
+    def switch_mode(self, mode=None):
         """
         Switches to internal mode
         """
-        if self._mode == MODE_INTERNAL:
+        if self._mode == mode:
             return
-#             for bone in self.bones:
-#                 for transform in bone.poses:
-#                     transform.rot[1] = -transform.rot[1]
-#                     transform.rot[2] = -transform.rot[2]
-#                     transform.x = -transform.x
-        # TODO: whatever is necessary to adjust Blender <-> LoL conversion
-
-    def switch_to_file_mode(self):
-        """
-        Switches to file/external mode
-        """
-        if self._mode == MODE_FILE:
-            return
-        # TODO: whatever is necessary to adjust Blender <-> LoL conversion
+#         for bone in self.bones:
+#             for transform in bone.poses:
+#                 transform.rot[1] = -transform.rot[1]
+#                 transform.rot[2] = -transform.rot[2]
+#                 transform.x = -transform.x
+        # TODO: whatever is necessary to adjust Blender <==> LoL conversion
 
     def __str__(self):
         """

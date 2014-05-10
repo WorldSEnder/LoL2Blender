@@ -55,7 +55,7 @@ class SklBone(object): # pylint: disable=too-few-public-methods
             self.parent = -1 if parent_id == 0xFFFF else parent_id
             self.transform = quats_to_matrix(q_x, q_y, q_z, q_w, t_x, t_y, t_z)
         else:
-            self.name = fistream.read(SklBone.kNameLength).decode('latin-1').split('\x00')[0]
+            self.name = fistream.read(SklBone.kNameLength).decode("latin-1").split('\x00')[0]
             self.namehash = hash_name(self.name)
             self.parent, self.scale = unpack("<if", fistream)
             major_col = split(unpack("12f", fistream), 4, 8)
@@ -87,21 +87,14 @@ class SklData(object): # pylint: disable=too-few-public-methods
             rstr += "\nBone #%s%s: %s" % (i, "(animated)" if i in self.skn_indices else "", bone)
         return rstr
 
-    def switch_to_blend_mode(self):
+    def switch_mode(self, mode=None):
         """
         Switches to internal mode
         """
-        if self._mode == MODE_INTERNAL:
+        if self._mode == mode:
             return
-        # TODO: whatever is necessary to adjust Blender <-> LoL conversion
-
-    def switch_to_file_mode(self):
-        """
-        Switches to file/external mode
-        """
-        if self._mode == MODE_FILE:
-            return
-        # TODO: whatever is necessary to adjust Blender <-> LoL conversion
+        # Whatever is necessary for
+        # Blender <==> File
 
 class RawHeader(object): # pylint: disable=too-many-instance-attributes
     """

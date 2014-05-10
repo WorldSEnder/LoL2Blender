@@ -3,15 +3,17 @@ Created on 03.05.2014
 
 @author: Carbon
 """
-from ..util import AbstractReader, MODE_FILE, length_check, read_from_file, seek, \
-    tell_f_length, unpack
+from .. import util
+from ..util import AbstractReader, MODE_FILE, length_check, seek, unpack
 from .SknData import SknData, SknMaterial, SknVtx
+import bmesh
+import bpy
 
 def import_from_file(filepath, context, **options):
     """
     Imports a mesh from the given filepath
     """
-    return read_from_file(SknReader, filepath, context, **options)
+    return util.read_from_file(SknReader, filepath, context, **options)
 
 class SknReader(AbstractReader):
     """
@@ -25,7 +27,7 @@ class SknReader(AbstractReader):
         reset - whether to reset the filestream to the original position
         """
         is_skn = False
-        magic = unpack("<I", fistream)[0]
+        magic = unpack("<I", fistream)
         if magic == 0x00112233:
             is_skn = True
         if reset:
@@ -47,7 +49,7 @@ class SknReader(AbstractReader):
         Reads the model from the given fistream
         """
         warns = []
-        f_length = tell_f_length(fistream, "SknReader")
+        f_length = util.tell_f_length(fistream, "SknReader")
         length_check(8, f_length, "SknReader")
         (# magic,
         version, nbr_objects) = unpack("<4x2H", fistream)
@@ -69,7 +71,7 @@ class SknReader(AbstractReader):
         warns = []
         min_length = 20 + 12 if version2 else 0
         length_check(min_length, f_length, "SknReader")
-        num_materials = unpack("<I", fistream)[0]
+        num_materials = unpack("<I", fistream)
         min_length += num_materials * SknMaterial.kSizeInFile
         length_check(min_length , f_length, "SknReader")
         data.materials = [SknMaterial().unpack(fistream) for _ in range(num_materials)]
@@ -89,7 +91,7 @@ class SknReader(AbstractReader):
             for wrong_indx in wrong_indices:
                 warns.append("SknReader: Face nbr. %s -> Index out of bounds: %s" % (face_nbr, wrong_indx))
             if not len(wrong_indices):
-                data.indices += [indx1, indx2, indx3]
+                data.faces.append([indx1, indx2, indx3])
         data.vertices = [SknVtx().unpack(fistream) for _ in range(num_verts)]
         if version2:
             data.version = 2
@@ -99,10 +101,36 @@ class SknReader(AbstractReader):
         self._data = data
         return warns
 
-    def to_scene(self, d__context):
+    def to_scene(self, context):
         """
         Updates the scene to fit the read data
         """
         self._data.switch_to_blend_mode()
-        # TODO: SklImporter.to_scene
-        raise NotImplementedError()
+        # use the bmesh api
+        bm = bmesh.new()
+        bverts = []
+        bdeform_layer = bm.verts.layers.deform.new()
+        buv_layer = bm.loops.layers.uv.new('LoLUVLayer')
+        for vert in self._data.vertices:
+            bvert = bm.verts.new()
+            bvert.co = vert.pos
+            bvert.normal = vert.normal
+            for weight, index in zip(vert.weights, vert.skn_indices):
+                if index < 0:
+                    continue
+                bvert[bdeform_layer][index] = weight
+            bverts.append(bvert)
+        for face in self._data.faces:
+            face_verts = [self._data.vertices[i] for i in face]
+            bface_verts = [bverts[i] for i in face]
+            bface = bm.faces.new(bface_verts)
+            for vertloop, vert in zip(bface.loops, face_verts):
+                vertloop[buv_layer].uv = vert.uv
+        # bmesh finished
+        mesh = bpy.data.meshes.new(self._data.champion_name)
+        bm.to_mesh(mesh)
+        obj = bpy.data.objects.new(self._data.champion_name, mesh)
+        scene = context.scene
+        scene.objects.link(obj)
+        scene.update()
+        return {'FINISHED'}

@@ -3,8 +3,8 @@ Created on 01.04.2014
 
 @author: Carbon
 """
-from ..util import AbstractReader, MODE_FILE, length_check, read_from_file, seek, \
-    tell_f_length, unpack
+from .. import util
+from ..util import AbstractReader, MODE_FILE, length_check, seek, unpack
 from .SklData import RawHeader, SklBone, SklData
 import re
 
@@ -12,7 +12,7 @@ def import_from_file(filepath, context, **options):
     """
     Imports a skeleton from the given filepath
     """
-    return read_from_file(SklReader, filepath, context, **options)
+    return util.read_from_file(SklReader, filepath, context, **options)
 
 class SklReader(AbstractReader):
     """
@@ -54,7 +54,7 @@ class SklReader(AbstractReader):
         Reads skl-data from the file.
         fistream - the stream to read from
         """
-        f_length = tell_f_length(fistream, prefix="SklReader")
+        f_length = util.tell_f_length(fistream, prefix="SklReader")
         length_check(20, f_length, "SklReader")
         byts = fistream.read(8)
         if byts == "r3d2sklt".encode():

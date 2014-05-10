@@ -76,25 +76,26 @@ class SknData(object): # pylint: disable=too-few-public-methods
         Set the mode to file if you'll read from a file and to internal if you init from blender
         """
         self._mode = mode
+        self.champion_name = 'PLACEHOLDER'
         self.version = -1
         # no need for the following in python
         # self.num_vtxs = 0
         # self.num_indices = 0
-        self.indices = []
+        self.faces = []
         self.materials = []
         self.vertices = []
         self.end_tab = b'' # some trash data whatever/debug
 
     def __str__(self):
         """Beautiful representation"""
-        rstr = "SknData:\nVersion %s, %s materials, %s vertices, %s faces" % \
-                (self.version, len(self.materials), len(self.vertices), len(self.indices) // 3)
+        rstr = "SknData for %s:\nVersion %s, %s materials, %s vertices, %s faces" % \
+                (self.champion_name, self.version, len(self.materials), len(self.vertices), len(self.indices) // 3)
         for i, mat in enumerate(self.materials):
             rstr += "\n    Material #%s: %s" % (i, mat)
         for i, vert in enumerate(self.vertices):
             rstr += "\n    Vertex #%s: %s" % (i, vert)
-        for i in range(len(self.indices) // 3):
-            rstr += "\n    Face #%s: %s" % (i, self.indices[i * 3: i * 3 + 3])
+        for i, face in enumerate(face):
+            rstr += "\n    Face #%s: %s" % (i, face)
         if self.version == 2:
             rstr += "\n    Some bytes: %s" % (self.end_tab,)
         return rstr

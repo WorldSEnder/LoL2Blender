@@ -63,7 +63,7 @@ class InibinReader(AbstractReader):
         # Read count of and keys
         unpack_func = TYPEFLAG_TABLE[flag]
         flag_type = TYPE_OF_FLAG[unpack_func]
-        count = unpack("<H", fistream)[0]
+        count = unpack("<H", fistream)
         keys = unpack("<%si" % count, fistream)
         try:
             read_items = unpack_func(count, fistream, data)
